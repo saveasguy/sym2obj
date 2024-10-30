@@ -6,37 +6,37 @@ namespace {
 
 int FooCallback() { return 42; }
 
-#define PRELOAD_foo(callback) \
-int foo() { return callback(); }
+#define PRELOAD_Foo(callback) \
+int Foo() { return callback(); }
 
-PRELOAD(foo, FooCallback)
+PRELOAD(Foo, FooCallback)
 
 
 int BarCallback(int a, int b) { return a + b; }
 
-#define PRELOAD_bar(callback) \
-int bar(int a, int b) { return callback(a, b); }
+#define PRELOAD_Bar(callback) \
+int Bar(int a, int b) { return callback(a, b); }
 
-PRELOAD(bar, BarCallback)
+PRELOAD(Bar, BarCallback)
 
 
 void BazCallback() { }
 
-#define PRELOAD_baz(callback) \
-void baz(void) { return callback(); }
+#define PRELOAD_Baz(callback) \
+void Baz(void) { return callback(); }
 
-PRELOAD(baz, BazCallback)
+PRELOAD(Baz, BazCallback)
 
 }
 
 TEST(PreloadSuite, SimpleFunction) {
-    EXPECT_EQ(foo(), 42);
+    EXPECT_EQ(Foo(), 42);
 }
 
 TEST(PreloadSuite, FunctionWithArgs) {
-    EXPECT_EQ(bar(42, 42), 84);
+    EXPECT_EQ(Bar(42, 42), 84);
 }
 
 TEST(PreloadSuite, VoidFunction) {
-    baz();
+    Baz();
 }
