@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
+add_subdirectory(src)
+
 if(SYM2OBJ_ENABLE_TESTING)
     add_subdirectory(test)
 endif()
