@@ -1,0 +1,4 @@
+Checks: 'clang-analyzer-*,readability-redundant-*,performance-*,google-*,portability-*,cppcoreguidlines-*'
+WarningsAsErrors: 'clang-analyzer-*,readability-redundant-*'
+HeaderFilterRegex: '.*'
+FormatStyle: Google
