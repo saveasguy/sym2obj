@@ -24,7 +24,7 @@ extern "C" {
 
 #define PRELOAD_execve(callback)                                              \
   int execve(const char *path, char *const argv[], char *const envp[]) {      \
-    auto execve_impl = sym2obj::details::preload<decltype(execve)>("execve"); \
+    auto execve_impl = sym2obj::details::preload<decltype(&execve)>("execve"); \
     return callback(execve_impl, path, argv, envp);                           \
   }
 

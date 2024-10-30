@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include <cstdlib>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -13,16 +14,16 @@ namespace sym2obj {
 
 using PID = pid_t;
 
-class Process {
+class Process final {
   template <typename FnTy, class... FnArgsTy>
   friend Process RunProcess(FnTy &&, FnArgsTy &&...);
 
  public:
   /// @brief Wait the process to end, if it is running.
   /// @return Return code of the running process, or 0 if not proccess was run.
-  int wait();
+  int Wait() noexcept;
 
-  bool running() { return running_; }
+  bool running() const noexcept { return running_; }
 
  private:
   template <typename FnTy, typename = std::enable_if_t<
@@ -62,6 +63,8 @@ Process RunProcess(FnTy &&fn, FnArgsTy &&...args) {
 
   return Process{launcher};
 }
+
+char *GenEnvironmentVariable(std::string_view name) noexcept;
 
 }  // namespace sym2obj
 
