@@ -1,3 +1,7 @@
+extern int g();
+
+int x = 23;
+
 int f() {
-    return 42;
+    return g() + 42;
 }

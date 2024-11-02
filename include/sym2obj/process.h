@@ -1,14 +1,14 @@
 #ifndef SYM2OBJ_SUPPORT_H_
 #define SYM2OBJ_SUPPORT_H_
 
-#include <sys/types.h>
-#include <unistd.h>
-
 #include <cstdlib>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+
+#include <sys/types.h>
+#include <unistd.h>
 
 namespace sym2obj {
 

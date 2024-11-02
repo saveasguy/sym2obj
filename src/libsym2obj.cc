@@ -1,49 +1,88 @@
-#include "libsym2obj.h"
+#include "internal/compiler_parser.h"
+#include "sym2obj/arg_list.h"
+#include "sym2obj/preload.h"
+#include "sym2obj/process.h"
+
+#include <algorithm>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <iterator>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <algorithm>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <string>
-#include <string_view>
-#include <vector>
-
-#include "sym2obj/arg_list.h"
-#include "sym2obj/preload.h"
-#include "sym2obj/process.h"
+#include <elfio/elfio.hpp>
 
 using namespace sym2obj::lib;
 
 namespace {
 
-bool IsKnownCompiler(std::string_view compiler) {
-  static const std::vector<std::string_view> kKnownCompilers = {
-      "cc", "c++", "gcc", "g++", "clang", "clang++"};
-
-  std::string compiler_name =
-      std::filesystem::path(compiler).filename().string();
-  auto iter =
-      std::find(kKnownCompilers.begin(), kKnownCompilers.end(), compiler_name);
-  return iter != kKnownCompilers.end();
+std::vector<std::string> GetSymbolsFromObjectFile(std::istream &obj) {
+  std::vector<std::string> symbols;
+  ELFIO::elfio elf;
+  if (!elf.load(obj)) return {};
+  for (auto &&section : elf.sections) {
+    ELFIO::symbol_section_accessor symbols_accessor{elf, section.get()};
+    for (int i = 0; i < symbols_accessor.get_symbols_num(); ++i) {
+      std::string name;
+      ELFIO::Elf64_Addr value;
+      ELFIO::Elf_Xword size;
+      unsigned char bind;
+      unsigned char type;
+      ELFIO::Elf_Half section_index;
+      unsigned char other;
+      symbols_accessor.get_symbol(i, name, value, size, bind, type,
+                                  section_index, other);
+      if (type == ELFIO::STT_FUNC || type == ELFIO::STT_OBJECT)
+        symbols.push_back(name);
+    }
+  }
+  return symbols;
 }
 
-void DoSym2Obj(std::string_view path, sym2obj::ArgList &argv,
-               char *const envp[]) {
+bool MakeUniqueFile(std::string &template_path) {
+  int fd = mkstemp(template_path.data());
+  if (fd == -1) return false;
+  close(fd);
+  return true;
+}
+
+void DumpObjectToSymbolsMapping(const std::filesystem::path &object,
+                                const std::vector<std::string> &symbols) {
+  char *sym2obj_dir = getenv("SYM2OBJ_DIR");
+  if (!sym2obj_dir) return;
+  auto unique_file =
+      std::filesystem::absolute(sym2obj_dir).string() + "/XXXXXXXX";
+  if (!MakeUniqueFile(unique_file)) return;
+  std::ofstream out{unique_file};
+  if (!out) return;
+  out << std::filesystem::absolute(object).string() << std::endl;
+  std::copy(symbols.begin(), symbols.end(),
+            std::ostream_iterator<std::string>{out, "\n"});
+}
+
+void DoSym2Obj(std::string_view path, const sym2obj::ArgList &argv) {
   if (!IsKnownCompiler(path)) return;
 
-  auto object_file_path = FindObjectFile(argv);
-  if (object_file_path.empty()) return;
+  auto obj_path = FindObjectFile(argv);
+  std::ifstream obj{obj_path, std::ios::binary};
+  if (!obj) return;
+  auto symbols = GetSymbolsFromObjectFile(obj);
+  if (symbols.empty()) return;
+  DumpObjectToSymbolsMapping(obj_path, symbols);
 }
 
-void DoSym2Obj(std::string_view path, char *const argv[], char *const envp[]) {
+void DoSym2Obj(std::string_view path, char *const argv[]) {
   sym2obj::ArgList args{argv};
-  DoSym2Obj(path, args, envp);
+  DoSym2Obj(path, args);
 }
 
 using ExecveTy = int (*)(const char *, char *const[], char *const[]);
@@ -54,10 +93,11 @@ int ExecveCallback(ExecveTy execve_impl, const char *path, char *const argv[],
     sym2obj::Process proc = sym2obj::RunProcess(execve_impl, path, argv, envp);
     int res = proc.Wait();
     if (res != 0) return res;
-    DoSym2Obj(path, argv, envp);
+    DoSym2Obj(path, argv);
     return res;
   } catch (const std::exception &e) {
-    std::cerr << "libsym2obj.so: WARNING: unhandled exception with the reason: " << e.what() << std::endl;
+    std::cerr << "libsym2obj.so: WARNING: unhandled exception with the reason: "
+              << e.what() << std::endl;
   } catch (...) {
     std::cerr << "libsym2obj.so: WARNING: unhandled exception" << std::endl;
   }

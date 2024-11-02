@@ -1,4 +1,4 @@
-#include "libsym2obj.h"
+#include "internal/compiler_parser.h"
 
 #include <gtest/gtest.h>
 

@@ -1,9 +1,9 @@
 #ifndef SYM2OBJ_PRELOAD_H_
 #define SYM2OBJ_PRELOAD_H
 
-#include <dlfcn.h>
-
 #include <string_view>
+
+#include <dlfcn.h>
 
 #define PRELOAD(func, callback)                          \
   static_assert(std::is_function_v<decltype(callback)>); \
