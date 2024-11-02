@@ -22,10 +22,10 @@ auto preload(std::string_view name) {
 extern "C" {
 #endif
 
-#define PRELOAD_execve(callback)                                              \
-  int execve(const char *path, char *const argv[], char *const envp[]) {      \
+#define PRELOAD_execve(callback)                                               \
+  int execve(const char *path, char *const argv[], char *const envp[]) {       \
     auto execve_impl = sym2obj::details::preload<decltype(&execve)>("execve"); \
-    return callback(execve_impl, path, argv, envp);                           \
+    return callback(execve_impl, path, argv, envp);                            \
   }
 
 #ifdef __cplusplus

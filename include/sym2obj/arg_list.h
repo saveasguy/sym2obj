@@ -26,11 +26,6 @@ class ArgList {
   std::vector<char *> args_;
 };
 
-/// @brief Find path to produced object file in compiler arguments.
-/// @param argv Compiler arguments.
-/// @return Path to object file or empy string, if not found.
-std::string FindObjectFile(const ArgList &argv);
-
 }  // namespace sym2obj
 
 #endif  // SYM2OBJ_ARG_LIST_H_

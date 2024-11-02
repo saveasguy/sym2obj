@@ -1,3 +1,5 @@
+#include "libsym2obj.h"
+
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -16,6 +18,8 @@
 #include "sym2obj/preload.h"
 #include "sym2obj/process.h"
 
+using namespace sym2obj::lib;
+
 namespace {
 
 bool IsKnownCompiler(std::string_view compiler) {
@@ -33,10 +37,8 @@ void DoSym2Obj(std::string_view path, sym2obj::ArgList &argv,
                char *const envp[]) {
   if (!IsKnownCompiler(path)) return;
 
-  auto object_file_path = sym2obj::FindObjectFile(argv);
+  auto object_file_path = FindObjectFile(argv);
   if (object_file_path.empty()) return;
-
-  std::cout << object_file_path << std::endl;
 }
 
 void DoSym2Obj(std::string_view path, char *const argv[], char *const envp[]) {
@@ -48,11 +50,18 @@ using ExecveTy = int (*)(const char *, char *const[], char *const[]);
 
 int ExecveCallback(ExecveTy execve_impl, const char *path, char *const argv[],
                    char *const envp[]) {
-  sym2obj::Process proc = sym2obj::RunProcess(execve_impl, path, argv, envp);
-  int res = proc.Wait();
-  if (res != 0) return res;
-  DoSym2Obj(path, argv, envp);
-  return res;
+  try {
+    sym2obj::Process proc = sym2obj::RunProcess(execve_impl, path, argv, envp);
+    int res = proc.Wait();
+    if (res != 0) return res;
+    DoSym2Obj(path, argv, envp);
+    return res;
+  } catch (const std::exception &e) {
+    std::cerr << "libsym2obj.so: WARNING: unhandled exception with the reason: " << e.what() << std::endl;
+  } catch (...) {
+    std::cerr << "libsym2obj.so: WARNING: unhandled exception" << std::endl;
+  }
+  return execve_impl(path, argv, envp);
 }
 
 }  // namespace

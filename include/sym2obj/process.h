@@ -44,8 +44,7 @@ class Process final {
 template <typename FnTy, class... FnArgsTy>
 Process RunProcess(FnTy &&fn, FnArgsTy &&...args) {
   auto args_wrapper = std::make_tuple(std::forward<FnArgsTy>(args)...);
-  auto launcher = [fn2 = std::forward<FnTy>(fn),
-                   args2 = std::move(args_wrapper)](bool &running_) -> PID {
+  auto launcher = [&fn, &args_wrapper](bool &running_) -> PID {
     pid_t pid = fork();
     switch (pid) {
       case -1: {
@@ -53,8 +52,7 @@ Process RunProcess(FnTy &&fn, FnArgsTy &&...args) {
         return pid;
       }
       case 0: {
-        std::apply(std::forward<decltype(fn2)>(fn2),
-                   std::forward<decltype(args2)>(args2));
+        std::apply(std::forward<FnTy>(fn), std::move(args_wrapper));
         std::exit(0);
       }
     }
