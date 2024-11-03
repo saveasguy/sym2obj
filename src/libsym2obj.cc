@@ -25,6 +25,8 @@ using namespace sym2obj::lib;
 
 namespace {
 
+const char kSym2objDirEnv[] = "SYM2OBJ_DIR";
+
 std::vector<std::string> GetSymbolsFromObjectFile(std::istream &obj) {
   std::vector<std::string> symbols;
   ELFIO::elfio elf;
@@ -55,18 +57,32 @@ bool MakeUniqueFile(std::string &template_path) {
   return true;
 }
 
+void DumpAsJSONArray(std::ostream &out,
+                     const std::vector<std::string> &strings) {
+  if (strings.empty()) {
+    out << "[]";
+    return;
+  }
+  out << "[";
+  std::transform(strings.begin(), strings.end() - 1,
+                 std::ostream_iterator<std::string>(out, ","),
+                 [](const std::string &str) { return "\"" + str + "\""; });
+  out << "\"" << strings.back() << "\"";
+  out << "]";
+}
+
 void DumpObjectToSymbolsMapping(const std::filesystem::path &object,
                                 const std::vector<std::string> &symbols) {
-  char *sym2obj_dir = getenv("SYM2OBJ_DIR");
+  char *sym2obj_dir = getenv(kSym2objDirEnv);
   if (!sym2obj_dir) return;
   auto unique_file =
       std::filesystem::absolute(sym2obj_dir).string() + "/XXXXXXXX";
   if (!MakeUniqueFile(unique_file)) return;
   std::ofstream out{unique_file};
   if (!out) return;
-  out << std::filesystem::absolute(object).string() << std::endl;
-  std::copy(symbols.begin(), symbols.end(),
-            std::ostream_iterator<std::string>{out, "\n"});
+  out << "[\"" << std::filesystem::absolute(object).string() << "\",";
+  DumpAsJSONArray(out, symbols);
+  out << "]";
 }
 
 void DoSym2Obj(std::string_view path, const sym2obj::ArgList &argv) {
@@ -75,8 +91,10 @@ void DoSym2Obj(std::string_view path, const sym2obj::ArgList &argv) {
   auto obj_path = FindObjectFile(argv);
   std::ifstream obj{obj_path, std::ios::binary};
   if (!obj) return;
+
   auto symbols = GetSymbolsFromObjectFile(obj);
   if (symbols.empty()) return;
+
   DumpObjectToSymbolsMapping(obj_path, symbols);
 }
 
@@ -91,10 +109,15 @@ int ExecveCallback(ExecveTy execve_impl, const char *path, char *const argv[],
                    char *const envp[]) {
   try {
     sym2obj::Process proc = sym2obj::RunProcess(execve_impl, path, argv, envp);
+    if (!proc.running()) {
+      std::cout << "whjart" << std::endl;
+      errno = EACCES;
+      return -1;
+    }
     int res = proc.Wait();
-    if (res != 0) return res;
+    if (res != 0) std::exit(res);
     DoSym2Obj(path, argv);
-    return res;
+    std::exit(res);
   } catch (const std::exception &e) {
     std::cerr << "libsym2obj.so: WARNING: unhandled exception with the reason: "
               << e.what() << std::endl;

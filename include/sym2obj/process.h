@@ -56,6 +56,7 @@ Process RunProcess(FnTy &&fn, FnArgsTy &&...args) {
         std::exit(0);
       }
     }
+    running_ = true;
     return pid;
   };
 

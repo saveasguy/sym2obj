@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <string_view>
 #include <vector>
+#include <iostream>
 
 namespace sym2obj::lib {
 
@@ -23,7 +24,7 @@ inline bool IsKnownCompiler(std::string_view compiler) {
 
 inline std::filesystem::path FindObjectFile(
     const sym2obj::ArgList &argv) {
-  auto iter = std::find(argv.begin(), argv.end(), std::string_view{"-o"});
+  auto iter = std::find(argv.begin(), argv.end() - 1, std::string_view{"-o"});
   if (iter == argv.end() || ++iter == argv.end() || *iter == nullptr) return "";
   return {*iter};
 }
